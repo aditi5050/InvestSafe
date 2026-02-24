@@ -1,29 +1,22 @@
 import { create } from 'zustand';
 
-interface PriceTick {
-  symbol: string;
-  price: number;
-  change: number;
-}
-
 interface TerminalState {
-  marketData: Record<string, PriceTick>;
-  newsEvents: any[];
   isConnected: boolean;
+  marketData: Record<string, any>;
   setConnected: (status: boolean) => void;
-  updatePrice: (tick: PriceTick) => void;
-  addNews: (news: any) => void;
+  updateMarketData: (tick: any) => void;
 }
 
 export const useTerminalStore = create<TerminalState>((set) => ({
-  marketData: {},
-  newsEvents: [],
   isConnected: false,
+  marketData: {},
   setConnected: (status) => set({ isConnected: status }),
-  updatePrice: (tick) => set((state) => ({
-    marketData: { ...state.marketData, [tick.symbol]: tick }
-  })),
-  addNews: (news) => set((state) => ({
-    newsEvents: [news, ...state.newsEvents].slice(0, 50) // Keep last 50 events
+  
+  // FIX: Merge new tick into existing data to prevent UI flashing and crashes
+  updateMarketData: (tick) => set((state) => ({
+    marketData: {
+      ...state.marketData,
+      [tick.symbol]: tick
+    }
   })),
 }));

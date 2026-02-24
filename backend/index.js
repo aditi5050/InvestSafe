@@ -13,9 +13,7 @@ app.use(express.json());
 const server = http.createServer(app);
 
 // 2. Initialize WebSocket Server
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
+const io = new Server(server, { cors: { origin: '*' } });
 
 // 3. Initialize Redis Client
 const redisClient = createClient({ url: process.env.REDIS_URL });
@@ -26,7 +24,7 @@ const kafka = new Kafka({
   clientId: process.env.KAFKA_CLIENT_ID,
   brokers: [process.env.KAFKA_BROKER]
 });
-const kafkaAdmin = kafka.admin(); // NEW: Admin client to create topics
+const kafkaAdmin = kafka.admin(); 
 const kafkaConsumer = kafka.consumer({ groupId: 'investsave-ui-group' });
 
 // --- CONNECTION BOOTSTRAP FUNCTION ---
@@ -38,15 +36,10 @@ async function startGateway() {
     await redisClient.connect();
     console.log('✅ Connected to Redis Cache');
 
-    // Connect Admin & Create Top
-    // ics
+    // Connect Admin & Create Topics
     await kafkaAdmin.connect();
     await kafkaAdmin.createTopics({
-      topics: [
-        { topic: 'market-ticks' },
-        { topic: 'analyzed-news' },
-        { topic: 'order-flow' }
-      ],
+      topics: [{ topic: 'market-ticks' }, { topic: 'analyzed-news' }, { topic: 'order-flow' }],
       waitForLeaders: true,
     });
     console.log('✅ Kafka Topics Created / Verified');
@@ -60,13 +53,25 @@ async function startGateway() {
     await kafkaConsumer.subscribe({ topic: 'analyzed-news', fromBeginning: false });
     console.log('✅ Subscribed to Kafka Topics');
 
+    // 🔴 THIS WAS MISSING: The actual listener that forwards data to the UI!
+    await kafkaConsumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        const rawData = message.value.toString();
+        const parsedData = JSON.parse(rawData);
+        console.log(`📥 Kafka Received [${topic}]:`, parsedData); // Watch it arrive in terminal
+
+        if (topic === 'market-ticks') {
+          io.emit('market-tick', parsedData); // Forward to React
+        } else if (topic === 'analyzed-news') {
+          io.emit('news-alert', parsedData);
+        }
+      },
+    });
+
     // Handle WebSocket Connections
     io.on('connection', (socket) => {
       console.log(`📡 New UI Client Connected: ${socket.id}`);
-      
-      socket.on('disconnect', () => {
-        console.log(`🔌 UI Client Disconnected: ${socket.id}`);
-      });
+      socket.on('disconnect', () => console.log(`🔌 UI Client Disconnected: ${socket.id}`));
     });
 
     // Start listening

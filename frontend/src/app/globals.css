@@ -1,11 +1,27 @@
 @import "tailwindcss";
 
-@theme {
-  --color-background: #030712;
-  --color-foreground: #ffffff;
+/* Force the Bloomberg-style dark theme */
+body {
+  background-color: #030712 !important;
+  color: white !important;
+  overflow: hidden;
 }
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+/* Custom Green Resize Handles */
+.react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 14px;
+  height: 14px;
+  border-right: 3px solid #22c55e !important;
+  border-bottom: 3px solid #22c55e !important;
+  cursor: se-resize;
+}
+
+/* Fix for the Video iframe blocking resizing */
+.react-grid-item.resizing iframe,
+.react-grid-item.react-draggable-dragging iframe {
+  pointer-events: none !important;
 }
