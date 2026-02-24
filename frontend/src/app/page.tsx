@@ -35,7 +35,6 @@ export default function TerminalPage() {
     if (extractedId && extractedId.length === 11) setVideoId(extractedId);
   };
 
-  // RESTORED: All 5 blocks from your 6:38 PM version
   const initialLayouts = {
     lg: [
       { i: "watchlist", x: 0, y: 0, w: 3, h: 6 },
@@ -76,7 +75,7 @@ export default function TerminalPage() {
           draggableHandle=".drag-handle"
           onLayoutChange={(currentLayout: any, allLayouts: any) => setLayouts(allLayouts)}
         >
-          {/* 1. WATCHLIST */}
+          {/* WATCHLIST */}
           <div key="watchlist" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl">
             <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab">
               <span className="text-[10px] font-bold text-gray-400 uppercase">Watchlist</span>
@@ -97,7 +96,7 @@ export default function TerminalPage() {
             </div>
           </div>
 
-          {/* 2. LIVE TV */}
+          {/* LIVE TV */}
           <div key="stream" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl relative">
             <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab justify-between z-10">
               <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-2">
@@ -113,28 +112,48 @@ export default function TerminalPage() {
             </div>
           </div>
 
-          {/* 3. CHART */}
+          {/* TRADINGVIEW CHART - UPDATED */}
           <div key="chart" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl">
             <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Chart</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Market Chart</span>
             </div>
-            <div className="flex-1 flex items-center justify-center text-gray-700 text-[10px]">[ READY ]</div>
+            <div className="flex-1 bg-[#0b1120] overflow-hidden">
+              <iframe
+                src="https://s.tradingview.com/widgetembed/?symbol=NASDAQ%3AAAPL&interval=D&hidesidetoolbar=1&theme=dark&style=1&timezone=Etc%2FUTC&locale=en"
+                style={{ width: "100%", height: "100%", border: "none" }}
+              ></iframe>
+            </div>
           </div>
 
-          {/* 4. AI INTEL */}
-          <div key="news" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl">
-            <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">AI Intel</span>
-            </div>
-            <div className="p-3 text-xs text-gray-500 italic">Streaming...</div>
-          </div>
+          {/* AI INTEL FEED */}
+<div key="news" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl">
+  <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab">
+    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">AI Intel Feed</span>
+  </div>
+  <div className="flex-1 p-3 overflow-y-auto">
+    {/* This will map through news alerts received from Kafka via the backend */}
+    <div className="space-y-2">
+      <div className="text-[10px] p-2 bg-[#111827] border-l-2 border-green-500">
+        <span className="text-gray-400 font-bold">[NEWS] </span>
+        <span>Fed signals cautious stance on interest rates; markets react positively.</span>
+      </div>
+      <div className="text-[10px] p-2 bg-[#111827] border-l-2 border-red-500">
+        <span className="text-gray-400 font-bold">[NEWS] </span>
+        <span>Tech sector faces headwind as global chip supply tightens.</span>
+      </div>
+    </div>
+  </div>
+</div>
 
-          {/* 5. SENTIMENT */}
+          {/* SENTIMENT - UPDATED */}
           <div key="sentiment" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl">
             <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Sentiment</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Sentiment Index</span>
             </div>
-            <div className="flex-1 flex items-center justify-center text-lg font-bold text-gray-700">NEUTRAL</div>
+            <div className="flex-1 flex flex-col items-center justify-center">
+               <span className="text-3xl font-black text-green-500 tracking-tighter">BULLISH</span>
+               <span className="text-[8px] text-gray-500 uppercase">Confidence: 84%</span>
+            </div>
           </div>
         </ResponsiveGridLayout>
       </div>
