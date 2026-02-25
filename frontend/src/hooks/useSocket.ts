@@ -3,8 +3,7 @@ import { io } from 'socket.io-client';
 import { useTerminalStore } from '../store/useTerminalStore';
 
 export const useSocket = () => {
-  const setConnected = useTerminalStore((state) => state.setConnected);
-  const updateMarketData = useTerminalStore((state) => state.updateMarketData);
+  const { setConnected, updateMarketData, addNewsAlert, addAnomaly } = useTerminalStore();
 
   useEffect(() => {
     const socket = io('http://localhost:4000');
@@ -13,15 +12,21 @@ export const useSocket = () => {
     socket.on('disconnect', () => setConnected(false));
 
     socket.on('market-tick', (data) => {
-      // Safety Check: Ensure data and symbol exist
+      if (data && data.symbol) updateMarketData(data);
+    });
+
+    socket.on('news-alert', (data) => {
+      if (data && data.headline) addNewsAlert(data);
+    });
+
+    // 🔴 NEW: Catch the volatility anomalies
+    socket.on('anomaly-alert', (data) => {
       if (data && data.symbol) {
-        console.log('📈 UI Tick for:', data.symbol);
-        updateMarketData(data);
+        console.log('⚠️ ANOMALY RECEIVED IN UI:', data);
+        addAnomaly(data);
       }
     });
 
-    return () => {
-      socket.disconnect();
-    };
-  }, [setConnected, updateMarketData]);
+    return () => { socket.disconnect(); };
+  }, [setConnected, updateMarketData, addNewsAlert, addAnomaly]);
 };

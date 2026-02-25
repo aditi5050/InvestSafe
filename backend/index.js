@@ -10,6 +10,12 @@ const { Kafka } = require('kafkajs');
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Add a simple health-check route to prevent "Cannot GET /" errors
+app.get('/', (req, res) => {
+  res.send('🚀 InvestSafe Gateway is LIVE and routing data...');
+});
+
 const server = http.createServer(app);
 
 // 2. Initialize WebSocket Server
@@ -30,7 +36,7 @@ const kafkaConsumer = kafka.consumer({ groupId: 'investsave-ui-group' });
 // --- CONNECTION BOOTSTRAP FUNCTION ---
 async function startGateway() {
   try {
-    console.log('⏳ Booting up InvestSave API Gateway...');
+    console.log('⏳ Booting up InvestSafe API Gateway...');
 
     // Connect to Redis
     await redisClient.connect();
@@ -39,7 +45,12 @@ async function startGateway() {
     // Connect Admin & Create Topics
     await kafkaAdmin.connect();
     await kafkaAdmin.createTopics({
-      topics: [{ topic: 'market-ticks' }, { topic: 'analyzed-news' }, { topic: 'order-flow' }],
+      topics: [
+        { topic: 'market-ticks' }, 
+        { topic: 'analyzed-news' }, 
+        { topic: 'order-flow' },
+        { topic: 'market-alerts' } // 🔴 NEW: Topic for Math Anomalies
+      ],
       waitForLeaders: true,
     });
     console.log('✅ Kafka Topics Created / Verified');
@@ -51,19 +62,26 @@ async function startGateway() {
 
     await kafkaConsumer.subscribe({ topic: 'market-ticks', fromBeginning: false });
     await kafkaConsumer.subscribe({ topic: 'analyzed-news', fromBeginning: false });
+    await kafkaConsumer.subscribe({ topic: 'market-alerts', fromBeginning: false }); // 🔴 NEW: Subscribe to Alerts
     console.log('✅ Subscribed to Kafka Topics');
 
-    // 🔴 THIS WAS MISSING: The actual listener that forwards data to the UI!
+    // The listener that forwards data to the UI
     await kafkaConsumer.run({
       eachMessage: async ({ topic, partition, message }) => {
         const rawData = message.value.toString();
         const parsedData = JSON.parse(rawData);
-        console.log(`📥 Kafka Received [${topic}]:`, parsedData); // Watch it arrive in terminal
+        
+        // Console log incoming topics (can comment this out later if it gets too spammy)
+        console.log(`📥 Kafka Received [${topic}]`); 
 
         if (topic === 'market-ticks') {
-          io.emit('market-tick', parsedData); // Forward to React
+          io.emit('market-tick', parsedData); 
         } else if (topic === 'analyzed-news') {
           io.emit('news-alert', parsedData);
+        } else if (topic === 'market-alerts') {
+          // 🔴 NEW: Forward math anomalies to React
+          console.log(`⚠️ Forwarding Anomaly to UI: ${parsedData.symbol}`);
+          io.emit('anomaly-alert', parsedData); 
         }
       },
     });
