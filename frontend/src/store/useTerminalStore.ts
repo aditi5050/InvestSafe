@@ -4,11 +4,13 @@ interface TerminalState {
   isConnected: boolean;
   marketData: Record<string, any>;
   newsAlerts: any[];
-  anomalies: any[]; // NEW: Holds the math alerts
+  anomalies: any[];
+  selectedAsset: string; // 🔴 NEW: Tracks the clicked asset
   setConnected: (status: boolean) => void;
   updateMarketData: (tick: any) => void;
   addNewsAlert: (news: any) => void;
-  addAnomaly: (alert: any) => void; // NEW: Function to add alerts
+  addAnomaly: (alert: any) => void;
+  setSelectedAsset: (symbol: string) => void; // 🔴 NEW: Updates the chart
 }
 
 export const useTerminalStore = create<TerminalState>((set) => ({
@@ -16,6 +18,7 @@ export const useTerminalStore = create<TerminalState>((set) => ({
   marketData: {},
   newsAlerts: [],
   anomalies: [],
+  selectedAsset: "BTC", // Default starting chart
   setConnected: (status) => set({ isConnected: status }),
   
   updateMarketData: (tick) => set((state) => ({
@@ -26,8 +29,10 @@ export const useTerminalStore = create<TerminalState>((set) => ({
     newsAlerts: [news, ...state.newsAlerts].slice(0, 10)
   })),
 
-  // Keep the 3 most recent anomalies so the screen doesn't get cluttered
   addAnomaly: (alert) => set((state) => ({
     anomalies: [{ ...alert, id: Date.now() }, ...state.anomalies].slice(0, 3)
   })),
+
+  // 🔴 NEW FUNCTION
+  setSelectedAsset: (symbol) => set({ selectedAsset: symbol }),
 }));

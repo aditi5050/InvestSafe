@@ -16,6 +16,10 @@ export default function TerminalPage() {
   const marketData = useTerminalStore((state) => state.marketData);
   const newsAlerts = useTerminalStore((state) => state.newsAlerts);
   const anomalies = useTerminalStore((state) => state.anomalies);
+  
+  // Pull the selected asset and the setter function from your store
+  const selectedAsset = useTerminalStore((state) => state.selectedAsset || "AAPL");
+  const setSelectedAsset = useTerminalStore((state) => state.setSelectedAsset);
 
   const [windowWidth, setWindowWidth] = useState(1200);
   const [videoId, setVideoId] = useState("a6KFJSDqzfc");
@@ -37,7 +41,7 @@ export default function TerminalPage() {
     if (extractedId && extractedId.length === 11) setVideoId(extractedId);
   };
 
-  // 🔴 DYNAMIC SENTIMENT CALCULATOR
+  // DYNAMIC SENTIMENT CALCULATOR
   const liveSentiment = useMemo(() => {
     if (newsAlerts.length === 0) return { impact: "WAITING", conf: 0, color: "text-gray-600" };
     
@@ -53,7 +57,7 @@ export default function TerminalPage() {
     return { impact: "MIXED", conf: avgConf, color: "text-yellow-500" };
   }, [newsAlerts]);
 
-  // 🔴 FIXED LAYOUT: Smaller Video, Wider Chart, Thinner Watchlist
+  // FIXED LAYOUT
   const initialLayouts = {
     lg: [
       { i: "watchlist", x: 0, y: 0, w: 2, h: 6 },
@@ -116,21 +120,61 @@ export default function TerminalPage() {
           rowHeight={100}
           draggableHandle=".drag-handle"
           onLayoutChange={(currentLayout: any, allLayouts: any) => setLayouts(allLayouts)}
-          preventCollision={true} // 🔴 FIXED DISRUPTION: Elements won't push each other wildly
-          compactType={null}      // Turn off forced vertical packing
+          preventCollision={true}
+          compactType={null}
         >
-          {/* WATCHLIST */}
+          {/* WATCHLIST WITH SEARCH BAR */}
           <div key="watchlist" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl">
-            <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab">
+            <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab justify-between">
               <span className="text-[10px] font-bold text-gray-400 uppercase">Watchlist</span>
+              
+              {/* 🔴 TWO-WAY SEARCH BAR */}
+              <form 
+                onSubmit={async (e: any) => {
+                  e.preventDefault();
+                  const symbol = e.target.symbol.value.toUpperCase();
+                  if (symbol) {
+                    setSelectedAsset(symbol); // Instantly updates the TradingView Chart
+                    e.target.symbol.value = ""; // Clears the input box
+                    
+                    // 🔴 Tells the Backend to add it to the live streaming numbers
+                    try {
+                      await fetch("http://localhost:4000/add-asset", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ symbol })
+                      });
+                    } catch(err) { console.error("Failed to add asset:", err) }
+                  }
+                }}
+              >
+                <input 
+                  name="symbol" 
+                  type="text" 
+                  placeholder="Add Asset..." 
+                  onMouseDown={(e) => e.stopPropagation()} // Prevents dragging while typing
+                  className="bg-[#030712] border border-gray-700 text-[9px] px-2 py-0.5 rounded w-28 text-white outline-none focus:border-blue-500 transition-colors" 
+                />
+              </form>
             </div>
-            <div className="flex-1 p-3 text-xs overflow-y-auto">
+            
+            <div className="flex-1 py-2 overflow-y-auto">
               {Object.keys(marketData).length === 0 ? (
-                <span className="text-gray-500 italic">Waiting for stream...</span>
+                <span className="text-gray-500 italic px-3 text-xs">Waiting for stream...</span>
               ) : (
                 Object.values(marketData).map((t: any) => (
-                  <div key={t.symbol} className="flex justify-between py-1 border-b border-gray-800 last:border-0">
-                    <span className="font-bold text-gray-300">{t.symbol}</span>
+                  <div 
+                    key={t.symbol} 
+                    onClick={() => setSelectedAsset(t.symbol)} // TRIGGER SELECTION
+                    className={`flex justify-between py-1.5 px-3 border-b border-gray-800/50 last:border-0 cursor-pointer transition-all duration-150 text-xs ${
+                      selectedAsset === t.symbol 
+                        ? 'bg-gray-800/80 border-l-2 border-l-blue-500' 
+                        : 'hover:bg-gray-800/40 border-l-2 border-l-transparent'
+                    }`}
+                  >
+                    <span className={`font-bold ${selectedAsset === t.symbol ? 'text-blue-400' : 'text-gray-300'}`}>
+                      {t.symbol}
+                    </span>
                     <span className={t.change >= 0 ? 'text-green-400' : 'text-red-400'}>
                       ${t.price.toFixed(2)}
                     </span>
@@ -159,11 +203,11 @@ export default function TerminalPage() {
           {/* TRADINGVIEW CHART */}
           <div key="chart" className="border border-gray-800 bg-[#0b1120] rounded flex flex-col shadow-xl">
             <div className="drag-handle h-8 bg-[#161e31] border-b border-gray-800 flex items-center px-3 cursor-grab">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Market Chart</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Market Chart: {selectedAsset}</span>
             </div>
             <div className="flex-1 bg-[#0b1120] overflow-hidden">
               <iframe
-                src="https://s.tradingview.com/widgetembed/?symbol=NASDAQ%3AAAPL&interval=D&hidesidetoolbar=1&theme=dark&style=1&timezone=Etc%2FUTC&locale=en"
+                src={`https://s.tradingview.com/widgetembed/?symbol=${selectedAsset}&interval=D&hidesidetoolbar=1&theme=dark&style=1&timezone=Etc%2FUTC&locale=en`}
                 style={{ width: "100%", height: "100%", border: "none" }}
               ></iframe>
             </div>

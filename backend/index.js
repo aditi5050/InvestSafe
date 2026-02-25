@@ -9,7 +9,7 @@ const { Kafka } = require('kafkajs');
 // 1. Initialize Express & HTTP Server
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // Allows Node to read JSON requests from React
 
 // Add a simple health-check route to prevent "Cannot GET /" errors
 app.get('/', (req, res) => {
@@ -27,11 +27,12 @@ redisClient.on('error', (err) => console.log('❌ Redis Client Error:', err));
 
 // 4. Initialize Kafka Client
 const kafka = new Kafka({
-  clientId: process.env.KAFKA_CLIENT_ID,
-  brokers: [process.env.KAFKA_BROKER]
+  clientId: process.env.KAFKA_CLIENT_ID || 'investsave-gateway',
+  brokers: [process.env.KAFKA_BROKER || 'localhost:9092']
 });
 const kafkaAdmin = kafka.admin(); 
 const kafkaConsumer = kafka.consumer({ groupId: 'investsave-ui-group' });
+const kafkaProducer = kafka.producer(); // 🔴 NEW: Allows Node to push commands to Python
 
 // --- CONNECTION BOOTSTRAP FUNCTION ---
 async function startGateway() {
@@ -49,20 +50,24 @@ async function startGateway() {
         { topic: 'market-ticks' }, 
         { topic: 'analyzed-news' }, 
         { topic: 'order-flow' },
-        { topic: 'market-alerts' } // 🔴 NEW: Topic for Math Anomalies
+        { topic: 'market-alerts' },
+        { topic: 'new-assets' } // 🔴 NEW: Topic for React to send assets to Python
       ],
       waitForLeaders: true,
     });
     console.log('✅ Kafka Topics Created / Verified');
     await kafkaAdmin.disconnect();
 
-    // Connect Consumer & Subscribe
+    // Connect Producer & Consumer
+    await kafkaProducer.connect();
+    console.log('✅ Connected Kafka Producer');
+    
     await kafkaConsumer.connect();
-    console.log('✅ Connected to Kafka Cluster');
+    console.log('✅ Connected Kafka Consumer');
 
     await kafkaConsumer.subscribe({ topic: 'market-ticks', fromBeginning: false });
     await kafkaConsumer.subscribe({ topic: 'analyzed-news', fromBeginning: false });
-    await kafkaConsumer.subscribe({ topic: 'market-alerts', fromBeginning: false }); // 🔴 NEW: Subscribe to Alerts
+    await kafkaConsumer.subscribe({ topic: 'market-alerts', fromBeginning: false });
     console.log('✅ Subscribed to Kafka Topics');
 
     // The listener that forwards data to the UI
@@ -70,17 +75,12 @@ async function startGateway() {
       eachMessage: async ({ topic, partition, message }) => {
         const rawData = message.value.toString();
         const parsedData = JSON.parse(rawData);
-        
-        // Console log incoming topics (can comment this out later if it gets too spammy)
-        console.log(`📥 Kafka Received [${topic}]`); 
 
         if (topic === 'market-ticks') {
           io.emit('market-tick', parsedData); 
         } else if (topic === 'analyzed-news') {
           io.emit('news-alert', parsedData);
         } else if (topic === 'market-alerts') {
-          // 🔴 NEW: Forward math anomalies to React
-          console.log(`⚠️ Forwarding Anomaly to UI: ${parsedData.symbol}`);
           io.emit('anomaly-alert', parsedData); 
         }
       },
@@ -90,6 +90,25 @@ async function startGateway() {
     io.on('connection', (socket) => {
       console.log(`📡 New UI Client Connected: ${socket.id}`);
       socket.on('disconnect', () => console.log(`🔌 UI Client Disconnected: ${socket.id}`));
+    });
+
+    // 🔴 NEW API ROUTE: Receives search bar commands from React and pushes to Python
+    app.post('/add-asset', async (req, res) => {
+      const { symbol } = req.body;
+      if (!symbol) return res.status(400).send('Symbol required');
+
+      console.log(`➕ UI requested to track new asset: ${symbol}`);
+      
+      try {
+        await kafkaProducer.send({
+          topic: 'new-assets',
+          messages: [{ value: JSON.stringify({ symbol }) }],
+        });
+        res.sendStatus(200);
+      } catch (err) {
+        console.error('❌ Failed to push to Kafka:', err);
+        res.status(500).send('Internal Error');
+      }
     });
 
     // Start listening
