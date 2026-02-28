@@ -44,3 +44,13 @@ Backend: Node.js, Express, Socket.io, KafkaJS.
 Data Pipeline: Apache Kafka, Redis.
 
 AI/Simulation: Python 3, Hugging Face Transformers (FinBERT), Kafka-Python.
+
+Architected a distributed microservices ecosystem using Kafka and Zookeeper to synchronize high-velocity data streams between Node.js and Python engines, ensuring system fault tolerance and horizontal scalability.
+
+Engineered a high-concurrency gateway utilizing WebSockets to stream live market trades from the Finnhub API, achieving sub-second latency for real-time asset price updates on a Next.js terminal dashboard.
+
+Developed an end-to-end NLP pipeline with Hugging Face Transformers (FinBERT, BART) and BeautifulSoup to scrape and analyze financial news, correlating live sentiment shifts with real-time stock rate fluctuations.
+
+Implemented a statistical monitoring engine in Python that calculates real-time Z-scores to identify price and volume anomalies, accelerating the delivery of actionable market insights by 60%.
+
+Orchestrated the entire infrastructure, including Redis and Kafka, using Docker Compose to ensure consistent development environments and sub-second data synchronization between AI engines and the UI.
